@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -62,6 +68,62 @@ const isStaticShowcase = import.meta.env.MODE === "pages";
 const titleCase = (value: string) =>
   value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const percent = (value: number) => `${Math.round(value * 100)}%`;
+
+type ShellPanel =
+  | "search"
+  | "workspace"
+  | "team"
+  | "settings"
+  | "profile"
+  | "help"
+  | "notifications";
+
+const ShellActionContext = createContext<(panel: ShellPanel) => void>(() => {});
+
+function Dialog({
+  title,
+  description,
+  onClose,
+  children,
+}: {
+  title: string;
+  description?: string;
+  onClose: () => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="dialog-backdrop" role="presentation" onClick={onClose}>
+      <section
+        aria-label={title}
+        aria-modal="true"
+        className="dialog-card"
+        role="dialog"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header>
+          <div>
+            <h3>{title}</h3>
+            {description && <p>{description}</p>}
+          </div>
+          <button aria-label={`Close ${title}`} onClick={onClose}>
+            <X size={17} />
+          </button>
+        </header>
+        {children && <div className="dialog-body">{children}</div>}
+      </section>
+    </div>
+  );
+}
+
+function ToastMessage({ message }: { message: string }) {
+  if (!message) return null;
+  return (
+    <div className="toast" role="status">
+      <CheckCircle2 size={17} />
+      {message}
+    </div>
+  );
+}
 
 const fallbackTickets: Ticket[] = [
   {
@@ -508,6 +570,11 @@ function Shell({
   role: Role;
   children: React.ReactNode;
 }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [panel, setPanel] = useState<ShellPanel | null>(null);
+  const [workspace, setWorkspace] = useState("Telco Network Ops");
+  const [compactDensity, setCompactDensity] = useState(false);
+  const [globalQuery, setGlobalQuery] = useState("");
   const nav = [
     { id: "inbox" as Page, icon: Inbox, label: "Agent inbox", badge: "8" },
     { id: "dashboard" as Page, icon: BarChart3, label: "Operations" },
@@ -515,22 +582,30 @@ function Shell({
     { id: "models" as Page, icon: CircleGauge, label: "Model health" },
   ];
   return (
-    <div className="shell">
-      <aside className="sidebar">
+    <ShellActionContext.Provider value={setPanel}>
+    <div className={`shell ${collapsed ? "sidebar-collapsed" : ""}`}>
+      <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
         <div className="side-logo">
           <Logo />
-          <button>
+          <button
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => setCollapsed((value) => !value)}
+          >
             <Menu size={18} />
           </button>
         </div>
-        <div className="workspace">
+        <button
+          aria-label="Switch workspace"
+          className="workspace"
+          onClick={() => setPanel("workspace")}
+        >
           <span className="workspace-icon">TN</span>
           <div>
             <small>WORKSPACE</small>
-            <b>Telco Network Ops</b>
+            <b>{workspace}</b>
           </div>
           <ChevronDown size={15} />
-        </div>
+        </button>
         <nav>
           {nav.map(({ id, icon: Icon, label, badge }) => (
             <button
@@ -546,11 +621,11 @@ function Shell({
         </nav>
         <div className="side-section">
           <span>MANAGE</span>
-          <button>
-            <Users size={18} /> Team members
+          <button onClick={() => setPanel("team")}>
+            <Users size={18} /> <span>Team members</span>
           </button>
-          <button>
-            <Settings size={18} /> Settings
+          <button onClick={() => setPanel("settings")}>
+            <Settings size={18} /> <span>Settings</span>
           </button>
         </div>
         <div className="side-spacer" />
@@ -561,21 +636,156 @@ function Shell({
             <small>PII redaction is active</small>
           </div>
         </div>
-        <div className="profile">
+        <button
+          aria-label="Open profile menu"
+          className="profile"
+          onClick={() => setPanel("profile")}
+        >
           <span>BA</span>
           <div>
             <b>Barış A.</b>
             <small>{role === "lead" ? "Team Lead" : "Support Agent"}</small>
           </div>
           <MoreHorizontal size={18} />
-        </div>
+        </button>
       </aside>
       <section className="main-column">{children}</section>
+      {panel === "workspace" && (
+        <Dialog
+          title="Switch workspace"
+          description="Choose the synthetic support operation you want to explore."
+          onClose={() => setPanel(null)}
+        >
+          <div className="choice-list">
+            {["Telco Network Ops", "Mobile Care Sandbox"].map((item) => (
+              <button
+                className={workspace === item ? "selected" : ""}
+                key={item}
+                onClick={() => {
+                  setWorkspace(item);
+                  setPanel(null);
+                }}
+              >
+                <span>{item === "Telco Network Ops" ? "TN" : "MC"}</span>
+                <b>{item}</b>
+                {workspace === item && <Check size={16} />}
+              </button>
+            ))}
+          </div>
+        </Dialog>
+      )}
+      {panel === "search" && (
+        <Dialog
+          title="Search workspace"
+          description="Jump to a product area in the interactive showcase."
+          onClose={() => setPanel(null)}
+        >
+          <div className="workspace-search">
+            <label>
+              <Search size={16} />
+              <input
+                autoFocus
+                placeholder="Search pages..."
+                value={globalQuery}
+                onChange={(event) => setGlobalQuery(event.target.value)}
+              />
+            </label>
+            <div>
+              {nav
+                .filter((item) => item.label.toLowerCase().includes(globalQuery.toLowerCase()))
+                .map(({ id, icon: Icon, label }) => (
+                  <button
+                    key={id}
+                    onClick={() => {
+                      setPage(id);
+                      setGlobalQuery("");
+                      setPanel(null);
+                    }}
+                  >
+                    <Icon size={16} /><span>{label}</span><ArrowRight size={14}/>
+                  </button>
+                ))}
+            </div>
+          </div>
+        </Dialog>
+      )}
+      {panel === "team" && (
+        <Dialog
+          title="Team members"
+          description="Synthetic staffing view for the portfolio environment."
+          onClose={() => setPanel(null)}
+        >
+          <div className="member-list">
+            {["Barış A. · Support Agent", "Deniz A. · Network Specialist", "Ece K. · Billing Specialist"].map((member) => (
+              <div key={member}><UserRound size={16} /><span>{member}</span><i>Online</i></div>
+            ))}
+          </div>
+        </Dialog>
+      )}
+      {panel === "settings" && (
+        <Dialog
+          title="Workspace settings"
+          description="Preferences apply only to this browser session."
+          onClose={() => setPanel(null)}
+        >
+          <label className="setting-row">
+            <span><b>Compact density</b><small>Fit more tickets on screen.</small></span>
+            <input
+              checked={compactDensity}
+              onChange={(event) => setCompactDensity(event.target.checked)}
+              type="checkbox"
+            />
+          </label>
+          <label className="setting-row">
+            <span><b>PII redaction</b><small>Required in the showcase environment.</small></span>
+            <input checked disabled type="checkbox" />
+          </label>
+        </Dialog>
+      )}
+      {panel === "profile" && (
+        <Dialog
+          title="Barış A."
+          description={role === "lead" ? "Team Lead" : "Support Agent"}
+          onClose={() => setPanel(null)}
+        >
+          <div className="profile-summary">
+            <span>BA</span><div><b>Demo profile</b><small>No personal account data is stored.</small></div>
+          </div>
+        </Dialog>
+      )}
+      {panel === "help" && (
+        <Dialog
+          title="Showcase guide"
+          description="A quick path through the strongest product flows."
+          onClose={() => setPanel(null)}
+        >
+          <ol className="guide-list">
+            <li>Open a ticket and review its AI classification.</li>
+            <li>Inspect grounded sources and similar resolved cases.</li>
+            <li>Ask Copilot a question and review cited steps.</li>
+            <li>Switch to Operations to inspect incident signals.</li>
+          </ol>
+        </Dialog>
+      )}
+      {panel === "notifications" && (
+        <Dialog
+          title="Notifications"
+          description="Two synthetic operational updates."
+          onClose={() => setPanel(null)}
+        >
+          <div className="notification-list">
+            <div><AlertTriangle size={16}/><span><b>Capacity signal detected</b><small>İstanbul Anadolu · 2 min ago</small></span></div>
+            <div><CheckCircle2 size={16}/><span><b>Knowledge sync completed</b><small>5 documents active · 9 min ago</small></span></div>
+          </div>
+        </Dialog>
+      )}
     </div>
+    </ShellActionContext.Provider>
   );
 }
 
 function Header({ title, subtitle }: { title: string; subtitle: string }) {
+  const openPanel = useContext(ShellActionContext);
   return (
     <header className="topbar">
       <div>
@@ -583,15 +793,27 @@ function Header({ title, subtitle }: { title: string; subtitle: string }) {
         <p>{subtitle}</p>
       </div>
       <div className="top-actions">
-        <div className="global-search">
+        <button
+          aria-label="Search workspace"
+          className="global-search"
+          onClick={() => openPanel("search")}
+        >
           <Search size={17} />
           <span>Search anything</span>
           <kbd>⌘ K</kbd>
-        </div>
-        <button className="icon-button">
+        </button>
+        <button
+          aria-label="Open showcase guide"
+          className="icon-button"
+          onClick={() => openPanel("help")}
+        >
           <HelpCircle size={18} />
         </button>
-        <button className="icon-button notification">
+        <button
+          aria-label="Open notifications"
+          className="icon-button notification"
+          onClick={() => openPanel("notifications")}
+        >
           <Bell size={18} />
           <i />
         </button>
@@ -615,19 +837,77 @@ function Status({ value }: { value: string }) {
 function InboxPage({
   tickets,
   onSelect,
+  onCreate,
 }: {
   tickets: Ticket[];
   onSelect: (ticket: Ticket) => void;
+  onCreate: (title: string, text: string) => void;
 }) {
   const [query, setQuery] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState("all");
-  const visible = tickets.filter(
-    (t) =>
-      `${t.id} ${t.title} ${t.redacted_text}`
-        .toLowerCase()
-        .includes(query.toLowerCase()) &&
-      (priorityFilter === "all" || t.priority === priorityFilter),
-  );
+  const [statusFilters, setStatusFilters] = useState<string[]>([]);
+  const [priorityFilters, setPriorityFilters] = useState<string[]>([]);
+  const [categoryFilters, setCategoryFilters] = useState<string[]>([]);
+  const [channelFilters, setChannelFilters] = useState<string[]>([]);
+  const [minimumConfidence, setMinimumConfidence] = useState(0);
+  const [reviewOnly, setReviewOnly] = useState(false);
+  const [sortMode, setSortMode] = useState<"priority" | "confidence" | "newest">("priority");
+  const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
+  const [lastUpdated, setLastUpdated] = useState("just now");
+  const [refreshing, setRefreshing] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [showNewTicket, setShowNewTicket] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newText, setNewText] = useState("");
+  const priorityRank = { critical: 4, high: 3, medium: 2, low: 1 };
+  const matches = (filters: string[], value: string) =>
+    filters.length === 0 || filters.includes(value);
+  const toggleFilter = (
+    value: string,
+    setter: React.Dispatch<React.SetStateAction<string[]>>,
+  ) => setter((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
+  const visible = tickets
+    .filter(
+      (ticket) =>
+        `${ticket.id} ${ticket.title} ${ticket.redacted_text}`
+          .toLowerCase()
+          .includes(query.toLowerCase()) &&
+        matches(statusFilters, ticket.status) &&
+        matches(priorityFilters, ticket.priority) &&
+        matches(categoryFilters, ticket.category) &&
+        matches(channelFilters, ticket.channel) &&
+        ticket.confidence * 100 >= minimumConfidence &&
+        (!reviewOnly || ticket.confidence < 0.6),
+    )
+    .sort((a, b) => {
+      if (sortMode === "confidence") return b.confidence - a.confidence;
+      if (sortMode === "newest") return Number(b.id.split("-")[1]) - Number(a.id.split("-")[1]);
+      return priorityRank[b.priority] - priorityRank[a.priority];
+    });
+  const notify = (message: string) => {
+    setNotice(message);
+    setTimeout(() => setNotice(""), 2200);
+  };
+  const clearFilters = () => {
+    setQuery("");
+    setStatusFilters([]);
+    setPriorityFilters([]);
+    setCategoryFilters([]);
+    setChannelFilters([]);
+    setMinimumConfidence(0);
+    setReviewOnly(false);
+    setSelectedTickets([]);
+    notify("Filters cleared");
+  };
+  const refresh = () => {
+    setRefreshing(true);
+    setTimeout(() => {
+      setRefreshing(false);
+      setLastUpdated("a few seconds ago");
+      notify("Ticket list refreshed");
+    }, 450);
+  };
+  const sortLabels = { priority: "Priority", confidence: "AI confidence", newest: "Newest" };
+  const cycleSort = () => setSortMode((current) => current === "priority" ? "confidence" : current === "confidence" ? "newest" : "priority");
   return (
     <>
       <Header
@@ -687,40 +967,59 @@ function InboxPage({
               <span>
                 <Filter size={16} /> Filters
               </span>
-              <button>Clear all</button>
+              <button onClick={clearFilters}>Clear all</button>
             </div>
             <FilterGroup
               label="STATUS"
               items={["New", "In progress", "Waiting", "Resolved"]}
+              values={["new", "in_progress", "waiting", "resolved"]}
               counts={[3, 2, 1, 2]}
+              selected={statusFilters}
+              onSelect={(value) => toggleFilter(value, setStatusFilters)}
             />
             <FilterGroup
               label="PRIORITY"
               items={["Critical", "High", "Medium", "Low"]}
               counts={[1, 2, 2, 3]}
-              selected={priorityFilter}
-              onSelect={(v) =>
-                setPriorityFilter(v === priorityFilter ? "all" : v)
-              }
+              selected={priorityFilters}
+              onSelect={(value) => toggleFilter(value, setPriorityFilters)}
             />
             <FilterGroup
               label="CATEGORY"
               items={["Fixed internet", "Mobile", "Billing", "Account"]}
+              values={["fixed_internet", "mobile", "billing", "account"]}
               counts={[3, 2, 2, 1]}
+              selected={categoryFilters}
+              onSelect={(value) => toggleFilter(value, setCategoryFilters)}
             />
             <FilterGroup
               label="CHANNEL"
               items={["Chat", "E-mail", "Call", "Mobile app"]}
+              values={["chat", "email", "call", "mobile_app"]}
               counts={[4, 2, 1, 1]}
+              selected={channelFilters}
+              onSelect={(value) => toggleFilter(value, setChannelFilters)}
             />
             <div className="confidence-filter">
               <div>
                 <span>MODEL CONFIDENCE</span>
-                <b>All scores</b>
+                <b>{minimumConfidence === 0 ? "All scores" : `${minimumConfidence}%+`}</b>
               </div>
-              <input type="range" min="0" max="100" defaultValue="0" />
+              <input
+                aria-label="Minimum model confidence"
+                type="range"
+                min="0"
+                max="100"
+                step="10"
+                value={minimumConfidence}
+                onChange={(event) => setMinimumConfidence(Number(event.target.value))}
+              />
               <label>
-                <input type="checkbox" /> Needs AI review only
+                <input
+                  checked={reviewOnly}
+                  onChange={(event) => setReviewOnly(event.target.checked)}
+                  type="checkbox"
+                /> Needs AI review only
               </label>
             </div>
           </aside>
@@ -734,10 +1033,10 @@ function InboxPage({
                   placeholder="Search ticket, customer, or keyword..."
                 />
               </div>
-              <button className="outline-button">
-                <RefreshCw size={16} /> Refresh
+              <button className="outline-button" onClick={refresh} disabled={refreshing}>
+                <RefreshCw className={refreshing ? "spin" : ""} size={16} /> Refresh
               </button>
-              <button className="primary-button">
+              <button className="primary-button" onClick={() => setShowNewTicket(true)}>
                 <Plus size={17} /> New ticket
               </button>
             </div>
@@ -746,16 +1045,21 @@ function InboxPage({
                 <b>{visible.length}</b> tickets
               </span>
               <span>
-                Last updated just now ·{" "}
-                <button>
-                  Sort: Priority <ChevronDown size={14} />
+                Last updated {lastUpdated} ·{" "}
+                <button aria-label="Change ticket sort" onClick={cycleSort}>
+                  Sort: {sortLabels[sortMode]} <ChevronDown size={14} />
                 </button>
               </span>
             </div>
             <div className="ticket-table">
               <div className="table-head">
                 <span className="check-cell">
-                  <input type="checkbox" />
+                  <input
+                    aria-label="Select all visible tickets"
+                    checked={visible.length > 0 && visible.every((ticket) => selectedTickets.includes(ticket.id))}
+                    onChange={(event) => setSelectedTickets(event.target.checked ? visible.map((ticket) => ticket.id) : [])}
+                    type="checkbox"
+                  />
                 </span>
                 <span>TICKET</span>
                 <span>CATEGORY</span>
@@ -775,7 +1079,12 @@ function InboxPage({
                     className="check-cell"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <input type="checkbox" />
+                    <input
+                      aria-label={`Select ${ticket.id}`}
+                      checked={selectedTickets.includes(ticket.id)}
+                      onChange={(event) => setSelectedTickets((current) => event.target.checked ? [...current, ticket.id] : current.filter((id) => id !== ticket.id))}
+                      type="checkbox"
+                    />
                   </span>
                   <span className="ticket-main">
                     <b>
@@ -835,10 +1144,10 @@ function InboxPage({
                 <button disabled>
                   <ChevronRight size={16} />
                 </button>
-                <button className="current">1</button>
-                <button>2</button>
-                <button>3</button>
-                <button>
+                <button className="current" onClick={() => notify("You are on page 1")}>1</button>
+                <button disabled>2</button>
+                <button disabled>3</button>
+                <button disabled>
                   <ChevronRight size={16} />
                 </button>
               </div>
@@ -846,6 +1155,30 @@ function InboxPage({
           </section>
         </div>
       </div>
+      {showNewTicket && (
+        <Dialog
+          title="Create synthetic ticket"
+          description="Adds a temporary ticket to this browser session."
+          onClose={() => setShowNewTicket(false)}
+        >
+          <form
+            className="dialog-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onCreate(newTitle.trim(), newText.trim());
+              setNewTitle("");
+              setNewText("");
+              setShowNewTicket(false);
+              notify("Synthetic ticket created");
+            }}
+          >
+            <label>Title<input required value={newTitle} onChange={(event) => setNewTitle(event.target.value)} /></label>
+            <label>Customer message<textarea required value={newText} onChange={(event) => setNewText(event.target.value)} /></label>
+            <button className="primary-button" type="submit"><Plus size={16}/> Create ticket</button>
+          </form>
+        </Dialog>
+      )}
+      <ToastMessage message={notice} />
     </>
   );
 }
@@ -853,30 +1186,35 @@ function InboxPage({
 function FilterGroup({
   label,
   items,
+  values,
   counts,
-  selected,
+  selected = [],
   onSelect,
 }: {
   label: string;
   items: string[];
+  values?: string[];
   counts: number[];
-  selected?: string;
+  selected?: string[];
   onSelect?: (v: string) => void;
 }) {
   return (
     <div className="filter-group">
       <span>{label}</span>
-      {items.map((item, i) => (
+      {items.map((item, i) => {
+        const value = values?.[i] ?? item.toLowerCase();
+        return (
         <label key={item}>
           <input
             type="checkbox"
-            checked={selected === item.toLowerCase()}
-            onChange={() => onSelect?.(item.toLowerCase())}
+            checked={selected.includes(value)}
+            onChange={() => onSelect?.(value)}
           />
           <em>{item}</em>
           <small>{counts[i]}</small>
         </label>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -898,6 +1236,12 @@ function TicketDetail({
   const [answer, setAnswer] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState("");
+  const [reply, setReply] = useState("");
+  const [conversation, setConversation] = useState(ticket.messages);
+  const [assignee, setAssignee] = useState(ticket.assigned_to);
+  const [ticketStatus, setTicketStatus] = useState(ticket.status);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [resolveOpen, setResolveOpen] = useState(false);
   const sources = documents
     .filter(
       (d) =>
@@ -952,21 +1296,31 @@ function TicketDetail({
         <div>
           <div className="detail-title">
             <h2>{ticket.id}</h2>
-            <Status value={ticket.status} />
+            <Status value={ticketStatus} />
             <Priority value={ticket.priority} />
           </div>
           <p>{ticket.title}</p>
         </div>
         <div className="detail-actions">
-          <button className="outline-button">
-            <UserRound size={16} /> {ticket.assigned_to ?? "Assign to me"}
+          <button
+            className="outline-button"
+            onClick={() => {
+              setAssignee("Barış A.");
+              notify("Ticket assigned to you");
+            }}
+          >
+            <UserRound size={16} /> {assignee ?? "Assign to me"}
           </button>
-          <button className="outline-button">
+          <button
+            aria-label="More ticket actions"
+            className="outline-button"
+            onClick={() => notify("Ticket actions are ready")}
+          >
             <MoreHorizontal size={18} />
           </button>
           <button
             className="resolve-button"
-            onClick={() => notify("Resolution draft opened")}
+            onClick={() => setResolveOpen(true)}
           >
             <ClipboardCheck size={17} /> Resolve ticket
           </button>
@@ -979,7 +1333,10 @@ function TicketDetail({
               <span>CUSTOMER CONTEXT</span>
               <b>{ticket.customer_id}</b>
             </div>
-            <button>
+            <button
+              aria-label="Customer context actions"
+              onClick={() => notify("Customer context copied")}
+            >
               <MoreHorizontal size={17} />
             </button>
           </div>
@@ -1003,7 +1360,7 @@ function TicketDetail({
                 <small>CUSTOMER SINCE</small>Oct 2022
               </span>
             </div>
-            <button>
+            <button onClick={() => setHistoryOpen(true)}>
               View customer history <ChevronRight size={15} />
             </button>
           </div>
@@ -1011,8 +1368,8 @@ function TicketDetail({
             <span>Today</span>
           </div>
           <div className="messages">
-            {ticket.messages.length ? (
-              ticket.messages.map((message, index) => (
+            {conversation.length ? (
+              conversation.map((message, index) => (
                 <div className={`message ${message.author}`} key={index}>
                   <div className="message-meta">
                     <b>
@@ -1037,17 +1394,46 @@ function TicketDetail({
             )}
           </div>
           <div className="reply-box">
-            <textarea placeholder="Write a response..." />
+            <textarea
+              placeholder="Write a response..."
+              value={reply}
+              onChange={(event) => setReply(event.target.value)}
+            />
             <div>
               <span>
-                <button>
+                <button
+                  aria-label="Attach file"
+                  onClick={() => notify("Attachment picker opened in demo mode")}
+                >
                   <Paperclip size={17} />
                 </button>
-                <button onClick={() => notify("Grounded draft generated")}>
+                <button
+                  onClick={() => {
+                    setReply(
+                      "Merhaba, bağlantı kalitesini doğrulamak için Wi-Fi ve Ethernet hız sonuçlarını karşılaştıracağız. Ardından hat ve bölgesel kapasite kontrollerini tamamlayıp sizi bilgilendireceğiz.",
+                    );
+                    notify("Grounded draft generated");
+                  }}
+                >
                   <WandSparkles size={17} /> Generate draft
                 </button>
               </span>
-              <button className="send-button" disabled>
+              <button
+                className="send-button"
+                disabled={!reply.trim()}
+                onClick={() => {
+                  setConversation((current) => [
+                    ...current,
+                    {
+                      author: "agent",
+                      body: reply.trim(),
+                      created_at: "Just now",
+                    },
+                  ]);
+                  setReply("");
+                  notify("Reply added to the demo conversation");
+                }}
+              >
                 <Send size={16} /> Send
               </button>
             </div>
@@ -1068,7 +1454,10 @@ function TicketDetail({
           </div>
           <AnalysisCard icon={<FileText size={17} />} title="Ticket summary">
             <p>{ticket.summary || ticket.redacted_text}</p>
-            <button className="text-action">
+            <button
+              className="text-action"
+              onClick={() => notify("Summary copied")}
+            >
               <Copy size={14} /> Copy
             </button>
           </AnalysisCard>
@@ -1099,8 +1488,12 @@ function TicketDetail({
               >
                 <Check size={15} /> Confirm
               </button>
-              <button>Change</button>
-              <button>
+              <button onClick={() => notify("Classification editor opened")}>
+                Change
+              </button>
+              <button
+                onClick={() => notify("Classification flagged for review")}
+              >
                 <X size={15} /> Incorrect
               </button>
             </div>
@@ -1242,6 +1635,40 @@ function TicketDetail({
           )}
         </aside>
       </div>
+      {historyOpen && (
+        <Dialog
+          title="Customer history"
+          description={`${ticket.customer_id} · Synthetic account timeline`}
+          onClose={() => setHistoryOpen(false)}
+        >
+          <div className="history-list">
+            <div><b>12 Jun 2026</b><span>Wi-Fi coverage guidance · Resolved</span></div>
+            <div><b>03 Mar 2026</b><span>Billing address update · Resolved</span></div>
+            <div><b>18 Nov 2025</b><span>Fiber installation follow-up · Resolved</span></div>
+          </div>
+        </Dialog>
+      )}
+      {resolveOpen && (
+        <Dialog
+          title="Resolve ticket"
+          description="Confirm the synthetic resolution outcome."
+          onClose={() => setResolveOpen(false)}
+        >
+          <div className="resolution-confirm">
+            <p>All recommended checks are complete and the customer has been informed.</p>
+            <button
+              className="resolve-button"
+              onClick={() => {
+                setTicketStatus("resolved");
+                setResolveOpen(false);
+                notify("Ticket marked as resolved");
+              }}
+            >
+              <CheckCircle2 size={16} /> Confirm resolution
+            </button>
+          </div>
+        </Dialog>
+      )}
       {toast && (
         <div className="toast">
           <CheckCircle2 size={17} />
@@ -1277,6 +1704,7 @@ function AnalysisCard({
 
 function SourcesTab({ sources }: { sources: Document[] }) {
   const [open, setOpen] = useState<string | null>(sources[0]?.id ?? null);
+  const [selectedSource, setSelectedSource] = useState<Document | null>(null);
   return (
     <div className="evidence-scroll">
       <div className="evidence-intro">
@@ -1313,7 +1741,12 @@ function SourcesTab({ sources }: { sources: Document[] }) {
             <div className="source-excerpt">
               <span>USED PASSAGE</span>
               <p>{source.content}</p>
-              <button>
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSelectedSource(source);
+                }}
+              >
                 Open document <ExternalLink size={13} />
               </button>
             </div>
@@ -1327,6 +1760,19 @@ function SourcesTab({ sources }: { sources: Document[] }) {
           <small>Deprecated sources are excluded by default.</small>
         </p>
       </div>
+      {selectedSource && (
+        <Dialog
+          title={selectedSource.title}
+          description={`${selectedSource.id} · v${selectedSource.version} · Page ${selectedSource.page}`}
+          onClose={() => setSelectedSource(null)}
+        >
+          <div className="document-preview">
+            <span>{selectedSource.section}</span>
+            <p>{selectedSource.content}</p>
+            <small>Synthetic approved knowledge document</small>
+          </div>
+        </Dialog>
+      )}
     </div>
   );
 }
@@ -1486,7 +1932,10 @@ function CopilotTab({
               <button onClick={() => notify("Feedback recorded")}>
                 <ThumbsDown size={15} />
               </button>
-              <button>
+              <button
+                aria-label="Report answer"
+                onClick={() => notify("Answer reported for review")}
+              >
                 <AlertTriangle size={15} />
               </button>
             </span>
@@ -1508,6 +1957,22 @@ function CopilotTab({
 }
 
 function DashboardPage({ data }: { data: Dashboard }) {
+  const [period, setPeriod] = useState<"Today" | "7 days" | "30 days">("Today");
+  const [incidentOpen, setIncidentOpen] = useState(false);
+  const [chartCategory, setChartCategory] = useState<"all" | "fixed_internet" | "mobile" | "billing">("all");
+  const [regionsOpen, setRegionsOpen] = useState(false);
+  const [notice, setNotice] = useState("");
+  const notify = (message: string) => {
+    setNotice(message);
+    setTimeout(() => setNotice(""), 2200);
+  };
+  const categoryLabels = {
+    all: "All categories",
+    fixed_internet: "Fixed internet",
+    mobile: "Mobile",
+    billing: "Billing",
+  };
+  const cycleCategory = () => setChartCategory((current) => current === "all" ? "fixed_internet" : current === "fixed_internet" ? "mobile" : current === "mobile" ? "billing" : "all");
   const metrics = [
     {
       label: "Tickets opened",
@@ -1547,9 +2012,15 @@ function DashboardPage({ data }: { data: Dashboard }) {
       <div className="page dashboard-page">
         <div className="dashboard-bar">
           <div>
-            <button className="active">Today</button>
-            <button>7 days</button>
-            <button>30 days</button>
+            {(["Today", "7 days", "30 days"] as const).map((item) => (
+              <button
+                className={period === item ? "active" : ""}
+                key={item}
+                onClick={() => setPeriod(item)}
+              >
+                {item}
+              </button>
+            ))}
           </div>
           <span>
             <span className="pulse" /> Live · updated 1 min ago
@@ -1572,10 +2043,18 @@ function DashboardPage({ data }: { data: Dashboard }) {
             <b>+{data.incident.increase}%</b>
             <span>Expected {data.incident.baseline}</span>
           </div>
-          <button>
-            Investigate <ArrowRight size={16} />
+          <button onClick={() => setIncidentOpen((value) => !value)}>
+            {incidentOpen ? "Close details" : "Investigate"} <ArrowRight size={16} />
           </button>
         </section>
+        {incidentOpen && (
+          <section className="incident-detail-panel">
+            <div><b>Signal confidence</b><span>{titleCase(data.incident.confidence)}</span></div>
+            <div><b>Recommended owner</b><span>Network Operations</span></div>
+            <div><b>Next action</b><span>Compare regional alarms with ticket intake.</span></div>
+            <button className="primary-button" onClick={() => notify("Incident review assigned to Network Operations")}>Assign investigation</button>
+          </section>
+        )}
         <div className="metric-grid">
           {metrics.map(({ label, value, delta, icon: Icon, color }) => (
             <article className="metric-card" key={label}>
@@ -1599,8 +2078,8 @@ function DashboardPage({ data }: { data: Dashboard }) {
                 <h3>Ticket volume by category</h3>
                 <p>Hourly intake across active queues</p>
               </div>
-              <button>
-                All categories <ChevronDown size={15} />
+              <button onClick={cycleCategory}>
+                {categoryLabels[chartCategory]} <ChevronDown size={15} />
               </button>
             </header>
             <div className="chart-legend">
@@ -1645,27 +2124,27 @@ function DashboardPage({ data }: { data: Dashboard }) {
                     boxShadow: "0 8px 28px #153b2e18",
                   }}
                 />
-                <Area
+                {(chartCategory === "all" || chartCategory === "fixed_internet") && <Area
                   type="monotone"
                   dataKey="fixed_internet"
                   stroke="#20a978"
                   strokeWidth={2.5}
                   fill="url(#mintFill)"
-                />
-                <Area
+                />}
+                {(chartCategory === "all" || chartCategory === "mobile") && <Area
                   type="monotone"
                   dataKey="mobile"
                   stroke="#ef765f"
                   strokeWidth={2.5}
                   fill="none"
-                />
-                <Area
+                />}
+                {(chartCategory === "all" || chartCategory === "billing") && <Area
                   type="monotone"
                   dataKey="billing"
                   stroke="#5b85d6"
                   strokeWidth={2.5}
                   fill="none"
-                />
+                />}
               </AreaChart>
             </ResponsiveContainer>
           </article>
@@ -1675,7 +2154,7 @@ function DashboardPage({ data }: { data: Dashboard }) {
                 <h3>Category distribution</h3>
                 <p>Share of today's volume</p>
               </div>
-              <button>
+              <button aria-label="Category chart options" onClick={() => notify("Category chart exported for review") }>
                 <MoreHorizontal size={18} />
               </button>
             </header>
@@ -1721,7 +2200,7 @@ function DashboardPage({ data }: { data: Dashboard }) {
                 <h3>Regional pressure</h3>
                 <p>Open tickets and anomaly severity</p>
               </div>
-              <button>
+              <button onClick={() => setRegionsOpen(true)}>
                 View all <ArrowRight size={14} />
               </button>
             </header>
@@ -1780,6 +2259,20 @@ function DashboardPage({ data }: { data: Dashboard }) {
             </div>
           </article>
         </div>
+        {regionsOpen && (
+          <Dialog
+            title="Regional pressure"
+            description={`Full synthetic region list · ${period}`}
+            onClose={() => setRegionsOpen(false)}
+          >
+            <div className="region-dialog-list">
+              {data.regions.map((region) => (
+                <div key={region.name}><b>{region.name}</b><span>{region.tickets} open tickets</span><i className={`severity ${region.severity}`}>{titleCase(region.severity)}</i></div>
+              ))}
+            </div>
+          </Dialog>
+        )}
+        <ToastMessage message={notice} />
       </div>
     </>
   );
@@ -1807,10 +2300,28 @@ function ProgressMetric({
   );
 }
 
-function KnowledgePage({ documents }: { documents: Document[] }) {
+function KnowledgePage({
+  documents,
+  onUpload,
+}: {
+  documents: Document[];
+  onUpload: (title: string) => void;
+}) {
   const [query, setQuery] = useState("");
-  const visible = documents.filter((d) =>
-    d.title.toLowerCase().includes(query.toLowerCase()),
+  const [statusFilter, setStatusFilter] = useState<"all" | "active">("all");
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [gapsOpen, setGapsOpen] = useState(false);
+  const [notice, setNotice] = useState("");
+  const notify = (message: string) => {
+    setNotice(message);
+    setTimeout(() => setNotice(""), 2200);
+  };
+  const visible = documents.filter(
+    (document) =>
+      document.title.toLowerCase().includes(query.toLowerCase()) &&
+      (statusFilter === "all" || document.status === statusFilter),
   );
   return (
     <>
@@ -1847,10 +2358,13 @@ function KnowledgePage({ documents }: { documents: Document[] }) {
               placeholder="Search documents, products, or tags..."
             />
           </div>
-          <button className="outline-button">
-            <Filter size={16} /> Filters
+          <button
+            className="outline-button"
+            onClick={() => setStatusFilter((current) => current === "all" ? "active" : "all")}
+          >
+            <Filter size={16} /> {statusFilter === "all" ? "All documents" : "Active only"}
           </button>
-          <button className="primary-button">
+          <button className="primary-button" onClick={() => setUploadOpen(true)}>
             <Upload size={16} /> Upload document
           </button>
         </div>
@@ -1888,7 +2402,10 @@ function KnowledgePage({ documents }: { documents: Document[] }) {
               <span>{doc.chunk_count}</span>
               <span>{doc.usage_count}</span>
               <span>{doc.effective_date}</span>
-              <button>
+              <button
+                aria-label={`Open actions for ${doc.title}`}
+                onClick={() => setSelectedDocument(doc)}
+              >
                 <MoreHorizontal size={17} />
               </button>
             </div>
@@ -1936,12 +2453,53 @@ function KnowledgePage({ documents }: { documents: Document[] }) {
                 questions lacked sufficient evidence
                 <small>Top gap: “IPv6 prefix delegation”</small>
               </p>
-              <button>
+              <button onClick={() => setGapsOpen(true)}>
                 Review gaps <ArrowRight size={14} />
               </button>
             </div>
           </article>
         </div>
+        {uploadOpen && (
+          <Dialog
+            title="Upload synthetic document"
+            description="Creates an indexed demo document for this browser session."
+            onClose={() => setUploadOpen(false)}
+          >
+            <form
+              className="dialog-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                onUpload(uploadTitle.trim());
+                setUploadTitle("");
+                setUploadOpen(false);
+                notify("Synthetic document indexed");
+              }}
+            >
+              <label>Document title<input required value={uploadTitle} onChange={(event) => setUploadTitle(event.target.value)} /></label>
+              <label>Product<select defaultValue="fixed_internet"><option value="fixed_internet">Fixed internet</option><option value="mobile">Mobile</option><option value="billing">Billing</option></select></label>
+              <button className="primary-button" type="submit"><Upload size={16}/> Upload and index</button>
+            </form>
+          </Dialog>
+        )}
+        {selectedDocument && (
+          <Dialog
+            title={selectedDocument.title}
+            description={`${selectedDocument.id} · v${selectedDocument.version}`}
+            onClose={() => setSelectedDocument(null)}
+          >
+            <div className="document-preview"><span>{selectedDocument.section}</span><p>{selectedDocument.content}</p><small>{selectedDocument.chunk_count} indexed chunks · {selectedDocument.usage_count} answer uses</small></div>
+          </Dialog>
+        )}
+        {gapsOpen && (
+          <Dialog
+            title="Unanswered knowledge gaps"
+            description="Synthetic low-evidence questions from the last 7 days."
+            onClose={() => setGapsOpen(false)}
+          >
+            <div className="history-list"><div><b>7 requests</b><span>IPv6 prefix delegation</span></div><div><b>5 requests</b><span>eSIM transfer between devices</span></div><div><b>3 requests</b><span>CGNAT opt-out eligibility</span></div></div>
+          </Dialog>
+        )}
+        <ToastMessage message={notice} />
       </div>
     </>
   );
@@ -2123,6 +2681,54 @@ export default function App() {
     setRole(value);
     setPage(value === "lead" ? "dashboard" : "inbox");
   };
+  const createTicket = (title: string, text: string) => {
+    setTickets((current) => {
+      const nextId = Math.max(...current.map((ticket) => Number(ticket.id.split("-")[1]))) + 1;
+      const ticket: Ticket = {
+        id: `TK-${nextId}`,
+        customer_id: `CUST-${nextId}`,
+        title,
+        channel: "chat",
+        language: "tr",
+        region: "İstanbul Anadolu",
+        status: "new",
+        assigned_to: null,
+        created_at: "Just now",
+        category: "other",
+        subcategory: "unclassified",
+        priority: "medium",
+        confidence: 0.52,
+        summary: text,
+        redacted_text: text,
+        entities: {},
+        decision_signals: ["New synthetic request", "Human review required"],
+        messages: [{ author: "customer", body: text, created_at: "Just now" }],
+        ai_reviewed: false,
+        resolution: null,
+      };
+      return [ticket, ...current];
+    });
+  };
+  const uploadDocument = (title: string) => {
+    setDocuments((current) => [
+      {
+        id: `DOC-${String(current.length + 1).padStart(3, "0")}`,
+        title,
+        section: "Synthetic uploaded guidance",
+        page: 1,
+        product: "fixed_internet",
+        language: "en",
+        version: "1.0",
+        status: "active",
+        effective_date: "15 Jul 2026",
+        content: "Synthetic guidance added during the interactive portfolio session.",
+        chunk_count: 1,
+        usage_count: 0,
+        index_status: "indexed",
+      },
+      ...current,
+    ]);
+  };
   const content = useMemo(() => {
     if (selected)
       return (
@@ -2133,9 +2739,9 @@ export default function App() {
         />
       );
     if (page === "dashboard") return <DashboardPage data={dashboard} />;
-    if (page === "knowledge") return <KnowledgePage documents={documents} />;
+    if (page === "knowledge") return <KnowledgePage documents={documents} onUpload={uploadDocument} />;
     if (page === "models") return <ModelsPage />;
-    return <InboxPage tickets={tickets} onSelect={setSelected} />;
+    return <InboxPage tickets={tickets} onSelect={setSelected} onCreate={createTicket} />;
   }, [page, selected, tickets, documents, dashboard]);
   if (!role) return <Landing onContinue={roleStart} />;
   return (
