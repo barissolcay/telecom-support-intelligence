@@ -9,15 +9,28 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with: { python-version: "3.12" }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: "22", cache: npm, cache-dependency-path: apps/web/package-lock.json }
       - run: pip install -e ".[dev]"
       - run: pytest --cov=telcoassist --cov-report=term-missing --cov-fail-under=80
       - run: ruff check src tests scripts
       - run: npm ci
         working-directory: apps/web
+      - run: npm run lint
+        working-directory: apps/web
       - run: npm run build
         working-directory: apps/web
+
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate Compose configuration
+        run: cp .env.example .env && docker compose config --quiet
+      - name: Build API image
+        run: docker build --tag telcoassist-api:test .
+      - name: Build web image
+        run: docker build --tag telcoassist-web:test apps/web

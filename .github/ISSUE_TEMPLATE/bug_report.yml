@@ -2,7 +2,7 @@ name: Bug report
 description: Report a reproducible TelcoAssist defect
 body:
   - type: textarea
-    attributes: { label: What happened?, description: Do not include real customer data or secrets. }
+    attributes: { label: "What happened?", description: "Do not include real customer data or secrets." }
     validations: { required: true }
   - type: textarea
     attributes: { label: Reproduction steps }

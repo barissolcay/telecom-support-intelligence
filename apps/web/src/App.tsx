@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Activity,
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
   BarChart3,
   Bell,
   BookOpen,
-  Bot,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -24,9 +22,7 @@ import {
   Inbox,
   Info,
   Layers3,
-  LifeBuoy,
   Menu,
-  MessageSquare,
   MoreHorizontal,
   Paperclip,
   Plus,
@@ -61,6 +57,7 @@ import type { Dashboard, Document, Ticket } from "./types";
 
 type Page = "inbox" | "dashboard" | "knowledge" | "models";
 type Role = "agent" | "lead";
+const isStaticShowcase = import.meta.env.MODE === "pages";
 
 const titleCase = (value: string) =>
   value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -908,31 +905,36 @@ function TicketDetail({
         (d.product === ticket.category || ticket.category === "other"),
     )
     .slice(0, 3);
+  const fallbackAnswer = {
+    answer:
+      "Mevcut ticket bağlamına göre önce Wi-Fi ve Ethernet sonuçlarını karşılaştırın.",
+    confidence: "high",
+    recommended_steps: [
+      {
+        step: "Wi-Fi ve Ethernet hız testlerini karşılaştırın.",
+        source_ids: ["DOC-014"],
+      },
+      {
+        step: "Hat SNR ve senkronizasyon geçmişini inceleyin.",
+        source_ids: ["DOC-014"],
+      },
+      {
+        step: "Bölgesel kapasite alarmlarını kontrol edin.",
+        source_ids: ["DOC-021"],
+      },
+    ],
+    sources,
+  };
   const ask = async () => {
     setLoading(true);
     try {
-      setAnswer(await api.copilot(ticket.id, question));
+      setAnswer(
+        isStaticShowcase
+          ? fallbackAnswer
+          : await api.copilot(ticket.id, question),
+      );
     } catch {
-      setAnswer({
-        answer:
-          "Mevcut ticket bağlamına göre önce Wi-Fi ve Ethernet sonuçlarını karşılaştırın.",
-        confidence: "high",
-        recommended_steps: [
-          {
-            step: "Wi-Fi ve Ethernet hız testlerini karşılaştırın.",
-            source_ids: ["DOC-014"],
-          },
-          {
-            step: "Hat SNR ve senkronizasyon geçmişini inceleyin.",
-            source_ids: ["DOC-014"],
-          },
-          {
-            step: "Bölgesel kapasite alarmlarını kontrol edin.",
-            source_ids: ["DOC-021"],
-          },
-        ],
-        sources,
-      });
+      setAnswer(fallbackAnswer);
     } finally {
       setLoading(false);
     }
@@ -2108,6 +2110,7 @@ export default function App() {
   const [dashboard, setDashboard] = useState<Dashboard>(fallbackDashboard);
   const [selected, setSelected] = useState<Ticket | null>(null);
   useEffect(() => {
+    if (isStaticShowcase) return;
     Promise.allSettled([api.tickets(), api.documents(), api.dashboard()]).then(
       ([t, d, a]) => {
         if (t.status === "fulfilled") setTickets(t.value);

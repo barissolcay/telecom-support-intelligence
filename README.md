@@ -2,6 +2,12 @@
 
 An end-to-end AI copilot and support intelligence platform for telecom customer service teams.
 
+[![CI](https://github.com/barissolcay/telecom-support-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/barissolcay/telecom-support-intelligence/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/barissolcay/telecom-support-intelligence/actions/workflows/codeql.yml/badge.svg)](https://github.com/barissolcay/telecom-support-intelligence/actions/workflows/codeql.yml)
+[![Live demo](https://img.shields.io/badge/live_demo-open-168b64)](https://barissolcay.github.io/telecom-support-intelligence/)
+[![Release](https://img.shields.io/github/v/release/barissolcay/telecom-support-intelligence)](https://github.com/barissolcay/telecom-support-intelligence/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-4f73bb)](LICENSE)
+
 TelcoAssist helps human support agents understand, prioritize, and resolve telecom tickets with grounded evidence. It combines hierarchical ticket classification, rule-aware priority prediction, privacy processing, hybrid case retrieval, citation-aware knowledge retrieval, feedback, and operational analytics in one review-first workflow.
 
 > All tickets, customers, documents, and evaluation results in this repository are synthetic. The application does not perform customer actions or send messages automatically.
@@ -11,6 +17,10 @@ TelcoAssist helps human support agents understand, prioritize, and resolve telec
 ![TelcoAssist product tour](docs/demo.gif)
 
 The demo covers the complete agent loop: open a ticket, inspect redacted customer context, review classification and priority signals, compare resolved cases, request grounded guidance, prepare a reply, and record feedback or a resolution.
+
+### Live showcase
+
+Open the [interactive TelcoAssist demo](https://barissolcay.github.io/telecom-support-intelligence/). The hosted showcase uses synthetic in-browser fallback data so every product screen remains explorable without credentials or customer systems. Run Docker Compose locally for the API-backed workflow.
 
 ## Features
 
