@@ -1,0 +1,12 @@
+{
+  "dataset_version": "1.0.0",
+  "recall_at_5": 1.0,
+  "precision_at_5": 0.5,
+  "mrr": 1.0,
+  "ndcg_at_5": 1.0,
+  "queries": 4,
+  "gate": {
+    "recall_at_5_target": 0.85,
+    "mrr_target": 0.75
+  }
+}

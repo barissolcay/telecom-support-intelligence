@@ -1,0 +1,34 @@
+schema: '2.0'
+stages:
+  generate:
+    cmd: python scripts/generate_dataset.py
+    deps:
+    - path: scripts/generate_dataset.py
+      hash: md5
+      md5: 37b683b9132f7b17bb2b379420bdf832
+      size: 6494
+    outs:
+    - path: data/synthetic/tickets.jsonl
+      hash: md5
+      md5: 685e90040f5005dfaea873dd5b3399c8
+      size: 1119389
+  train:
+    cmd: python scripts/train_classifier.py
+    deps:
+    - path: data/synthetic/tickets.jsonl
+      hash: md5
+      md5: 685e90040f5005dfaea873dd5b3399c8
+      size: 1119389
+    - path: scripts/train_classifier.py
+      hash: md5
+      md5: 36df9e7d843df645842629923b16a8c7
+      size: 3828
+    outs:
+    - path: ml/model_registry/tfidf_logreg.joblib
+      hash: md5
+      md5: 4a97b684550c237db497d028ad6c2192
+      size: 789364
+    - path: reports/classification/metrics.json
+      hash: md5
+      md5: c65e013c604412092418cea362d39047
+      size: 2474

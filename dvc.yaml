@@ -1,0 +1,17 @@
+stages:
+  generate:
+    cmd: python scripts/generate_dataset.py
+    deps:
+      - scripts/generate_dataset.py
+    outs:
+      - data/synthetic/tickets.jsonl
+  train:
+    cmd: python scripts/train_classifier.py
+    deps:
+      - data/synthetic/tickets.jsonl
+      - scripts/train_classifier.py
+    outs:
+      - ml/model_registry/tfidf_logreg.joblib
+    metrics:
+      - reports/classification/metrics.json:
+          cache: false

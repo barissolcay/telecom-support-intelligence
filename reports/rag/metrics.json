@@ -1,0 +1,12 @@
+{
+  "dataset_version": "1.0.0",
+  "citation_correctness": 1.0,
+  "citation_completeness": 1.0,
+  "unsupported_claim_rate": 0.0,
+  "refusal_accuracy": 1.0,
+  "questions": 4,
+  "gate": {
+    "citation_correctness_target": 0.9,
+    "unsupported_claim_rate_max": 0.05
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "dataset_version": "1.0.0",
+  "recall": 1.0,
+  "false_positive_rate": 0.0,
+  "critical_leakage": 0,
+  "fixtures": 6,
+  "gate": {
+    "recall_target": 0.95,
+    "zero_critical_leakage": true
+  }
+}

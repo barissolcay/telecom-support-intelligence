@@ -1,0 +1,10 @@
+{
+  "dataset_version": "1.0.0",
+  "macro_f1": 1.0,
+  "critical_recall": 1.0,
+  "fixtures": 7,
+  "gate": {
+    "macro_f1_target": 0.75,
+    "critical_recall_target": 0.9
+  }
+}

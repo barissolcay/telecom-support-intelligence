@@ -1,0 +1,113 @@
+{
+  "dataset_version": "1.0.0",
+  "records": 2400,
+  "train_records": 1800,
+  "test_records": 600,
+  "split": "scenario-template group split",
+  "macro_f1": 1.0,
+  "weighted_f1": 1.0,
+  "language_macro_f1": {
+    "tr": 1.0,
+    "en": 1.0
+  },
+  "log_loss": 0.0441,
+  "calibration_ece_proxy": 0.043,
+  "mean_inference_latency_ms": 0.2123,
+  "training_seconds": 0.396,
+  "per_class": {
+    "account/authentication": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "account/cancellation": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "account/subscription": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "billing/incorrect_charge": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "billing/payment": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "billing/refund": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "fixed_internet/complete_outage": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "fixed_internet/high_latency": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "fixed_internet/installation": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "fixed_internet/intermittent_connection": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "fixed_internet/modem_configuration": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "fixed_internet/speed_degradation": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "mobile/coverage": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "mobile/mobile_data": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "mobile/roaming": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "mobile/sim": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "mobile/voice_call": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    },
+    "other/unclassified": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0
+    }
+  },
+  "gate": {
+    "macro_f1_target": 0.85,
+    "passed": true
+  }
+}

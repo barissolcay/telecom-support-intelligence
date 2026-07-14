@@ -1,0 +1,56 @@
+services:
+  web:
+    build: ./apps/web
+    ports: ["8080:80"]
+    depends_on:
+      api: { condition: service_healthy }
+
+  api:
+    build: .
+    env_file: [.env]
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      qdrant: { condition: service_started }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  worker:
+    build: .
+    command: ["python", "-m", "telcoassist.worker"]
+    env_file: [.env]
+    depends_on:
+      postgres: { condition: service_healthy }
+      qdrant: { condition: service_started }
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: telcoassist
+      POSTGRES_USER: telcoassist
+      POSTGRES_PASSWORD: telcoassist
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U telcoassist"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  qdrant:
+    image: qdrant/qdrant:v1.14.1
+    ports: ["6333:6333"]
+    volumes: ["qdrant_data:/qdrant/storage"]
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.1.1
+    command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", "--backend-store-uri", "sqlite:////mlflow/mlflow.db", "--default-artifact-root", "/mlflow/artifacts"]
+    ports: ["5000:5000"]
+    volumes: ["mlflow_data:/mlflow"]
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  mlflow_data:
