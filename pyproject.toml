@@ -18,15 +18,19 @@ dependencies = [
   "httpx>=0.28,<1",
   "sqlalchemy>=2.0,<3",
   "psycopg[binary]>=3.2,<4",
-  "scikit-learn>=1.6,<2",
-  "joblib>=1.5,<2",
 ]
 
 [project.optional-dependencies]
 dev = [
+  "scikit-learn>=1.6,<2",
+  "joblib>=1.5,<2",
   "pytest>=8.4,<9",
   "pytest-cov>=6.2,<7",
   "ruff>=0.12,<1",
+]
+ml = [
+  "scikit-learn>=1.6,<2",
+  "joblib>=1.5,<2",
 ]
 
 [tool.hatch.build.targets.wheel]

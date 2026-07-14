@@ -2,10 +2,12 @@ import json
 from math import log2
 from pathlib import Path
 
+from sklearn.metrics import f1_score
+
 from telcoassist.priority.service import predict_priority
 from telcoassist.privacy.redaction import redact
 from telcoassist.rag.service import answer
-from telcoassist.retrieval.service import hybrid_search
+from telcoassist.retrieval.service import rank_items
 from telcoassist.tickets.seed import SIMILAR_CASES
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,10 +30,10 @@ def evaluate_priority() -> None:
         ("Genel bilgi almak istiyorum.", "other", "low"),
     ]
     predictions = [predict_priority(text, category).priority for text, category, _ in fixtures]
-    correct = sum(prediction == expected for prediction, (_, _, expected) in zip(predictions, fixtures, strict=True))
+    expected_labels = [expected for _, _, expected in fixtures]
     critical_total = sum(expected == "critical" for _, _, expected in fixtures)
     critical_hits = sum(prediction == "critical" and expected == "critical" for prediction, (_, _, expected) in zip(predictions, fixtures, strict=True))
-    write_report("reports/classification/priority_metrics.json", {"macro_f1": round(correct / len(fixtures), 4), "critical_recall": round(critical_hits / critical_total, 4), "fixtures": len(fixtures), "gate": {"macro_f1_target": .75, "critical_recall_target": .9}})
+    write_report("reports/classification/priority_metrics.json", {"macro_f1": round(float(f1_score(expected_labels, predictions, average="macro")), 4), "critical_recall": round(critical_hits / critical_total, 4), "fixtures": len(fixtures), "gate": {"macro_f1_target": .75, "critical_recall_target": .9}})
 
 
 def evaluate_privacy() -> None:
@@ -58,7 +60,7 @@ def evaluate_retrieval() -> None:
     ]
     reciprocal, recall, precision, ndcg = [], [], [], []
     for query, product, expected in fixtures:
-        ranked = hybrid_search(query, SIMILAR_CASES, product=product, limit=5)
+        ranked = rank_items(query, SIMILAR_CASES, product=product, limit=5)
         ids = [row["id"] for row in ranked]
         rank = ids.index(expected) + 1 if expected in ids else None
         recall.append(1.0 if rank else 0.0)

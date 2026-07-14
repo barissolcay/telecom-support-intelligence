@@ -2,7 +2,6 @@ import {
   createContext,
   useContext,
   useEffect,
-  useMemo,
   useState,
 } from "react";
 import {
@@ -68,6 +67,16 @@ const isStaticShowcase = import.meta.env.MODE === "pages";
 const titleCase = (value: string) =>
   value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const percent = (value: number) => `${Math.round(value * 100)}%`;
+const formatTimestamp = (value: string) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  const minutes = Math.max(0, Math.round((Date.now() - parsed.getTime()) / 60_000));
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  return parsed.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+};
 
 type ShellPanel =
   | "search"
@@ -543,7 +552,7 @@ function Landing({ onContinue }: { onContinue: (role: Role) => void }) {
       <footer className="landing-footer">
         <div>
           <span>MODEL</span>
-          <b>TF-IDF Linear · v1.0</b>
+          <b>Deterministic baseline · v1.0</b>
         </div>
         <div>
           <span>KNOWLEDGE BASE</span>
@@ -841,7 +850,7 @@ function InboxPage({
 }: {
   tickets: Ticket[];
   onSelect: (ticket: Ticket) => void;
-  onCreate: (title: string, text: string) => void;
+  onCreate: (title: string, text: string) => Promise<void>;
 }) {
   const [query, setQuery] = useState("");
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
@@ -1088,7 +1097,7 @@ function InboxPage({
                   </span>
                   <span className="ticket-main">
                     <b>
-                      {ticket.id} <small>· {ticket.created_at}</small>
+                      {ticket.id} <small>· {formatTimestamp(ticket.created_at)}</small>
                     </b>
                     <strong>{ticket.title}</strong>
                     <p>{ticket.redacted_text}</p>
@@ -1163,13 +1172,17 @@ function InboxPage({
         >
           <form
             className="dialog-form"
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
-              onCreate(newTitle.trim(), newText.trim());
-              setNewTitle("");
-              setNewText("");
-              setShowNewTicket(false);
-              notify("Synthetic ticket created");
+              try {
+                await onCreate(newTitle.trim(), newText.trim());
+                setNewTitle("");
+                setNewText("");
+                setShowNewTicket(false);
+                notify("Synthetic ticket created");
+              } catch {
+                notify("Ticket could not be created");
+              }
             }}
           >
             <label>Title<input required value={newTitle} onChange={(event) => setNewTitle(event.target.value)} /></label>
@@ -1224,10 +1237,12 @@ function TicketDetail({
   ticket,
   documents,
   onBack,
+  onUpdate,
 }: {
   ticket: Ticket;
   documents: Document[];
   onBack: () => void;
+  onUpdate: (ticket: Ticket) => void;
 }) {
   const [tab, setTab] = useState<DetailTab>("sources");
   const [question, setQuestion] = useState(
@@ -1287,10 +1302,70 @@ function TicketDetail({
     setToast(message);
     setTimeout(() => setToast(""), 2200);
   };
+  const assignToMe = async () => {
+    try {
+      const updated = isStaticShowcase
+        ? { ...ticket, assigned_to: "Barış A." }
+        : await api.updateTicket(ticket.id, { assigned_to: "Barış A." });
+      setAssignee(updated.assigned_to);
+      onUpdate(updated);
+      notify("Ticket assigned to you");
+    } catch {
+      notify("Ticket assignment failed");
+    }
+  };
+  const sendReply = async () => {
+    const body = reply.trim();
+    if (!body) return;
+    try {
+      if (isStaticShowcase) {
+        const messages = [
+          ...conversation,
+          { author: "agent" as const, body, created_at: new Date().toISOString() },
+        ];
+        const updated = { ...ticket, messages, status: "in_progress" as const };
+        setConversation(messages);
+        setTicketStatus(updated.status);
+        onUpdate(updated);
+      } else {
+        const updated = await api.addMessage(ticket.id, body);
+        setConversation(updated.messages);
+        setTicketStatus(updated.status);
+        onUpdate(updated);
+      }
+      setReply("");
+      notify("Reply saved to the conversation");
+    } catch {
+      notify("Reply could not be saved");
+    }
+  };
+  const submitFeedback = async (rating: "accepted" | "edited" | "rejected") => {
+    try {
+      if (!isStaticShowcase) {
+        await api.feedback({ target_type: "classification", target_id: ticket.id, rating });
+      }
+      notify(rating === "accepted" ? "Classification confirmed" : "Classification feedback saved");
+    } catch {
+      notify("Feedback could not be saved");
+    }
+  };
+  const resolveTicket = async () => {
+    try {
+      const updated = isStaticShowcase
+        ? { ...ticket, status: "resolved" as const, resolution: { resolution: "resolved" } }
+        : await api.resolve(ticket.id);
+      setTicketStatus("resolved");
+      setResolveOpen(false);
+      onUpdate(updated);
+      notify("Ticket marked as resolved");
+    } catch {
+      notify("Ticket could not be resolved");
+    }
+  };
   return (
     <div className="detail-page">
       <div className="detail-top">
-        <button className="back-button" onClick={onBack}>
+        <button aria-label="Back to inbox" className="back-button" onClick={onBack}>
           <ArrowLeft size={18} />
         </button>
         <div>
@@ -1304,10 +1379,7 @@ function TicketDetail({
         <div className="detail-actions">
           <button
             className="outline-button"
-            onClick={() => {
-              setAssignee("Barış A.");
-              notify("Ticket assigned to you");
-            }}
+            onClick={assignToMe}
           >
             <UserRound size={16} /> {assignee ?? "Assign to me"}
           </button>
@@ -1377,7 +1449,7 @@ function TicketDetail({
                         ? ticket.customer_id
                         : "You"}
                     </b>
-                    <small>{message.created_at}</small>
+                    <small>{formatTimestamp(message.created_at)}</small>
                   </div>
                   <p>{message.body}</p>
                   {message.body.includes("[") && (
@@ -1421,18 +1493,7 @@ function TicketDetail({
               <button
                 className="send-button"
                 disabled={!reply.trim()}
-                onClick={() => {
-                  setConversation((current) => [
-                    ...current,
-                    {
-                      author: "agent",
-                      body: reply.trim(),
-                      created_at: "Just now",
-                    },
-                  ]);
-                  setReply("");
-                  notify("Reply added to the demo conversation");
-                }}
+                onClick={sendReply}
               >
                 <Send size={16} /> Send
               </button>
@@ -1484,15 +1545,15 @@ function TicketDetail({
             <div className="review-actions">
               <button
                 className="confirmed"
-                onClick={() => notify("Classification confirmed")}
+                onClick={() => submitFeedback("accepted")}
               >
                 <Check size={15} /> Confirm
               </button>
-              <button onClick={() => notify("Classification editor opened")}>
+              <button onClick={() => submitFeedback("edited")}>
                 Change
               </button>
               <button
-                onClick={() => notify("Classification flagged for review")}
+                onClick={() => submitFeedback("rejected")}
               >
                 <X size={15} /> Incorrect
               </button>
@@ -1563,7 +1624,7 @@ function TicketDetail({
                   Ethernet?”
                 </p>
               </div>
-              <button onClick={() => notify("Question inserted into response")}>
+              <button aria-label="Insert suggested follow-up" onClick={() => notify("Question inserted into response")}>
                 <Plus size={14} />
               </button>
             </div>
@@ -1658,11 +1719,7 @@ function TicketDetail({
             <p>All recommended checks are complete and the customer has been informed.</p>
             <button
               className="resolve-button"
-              onClick={() => {
-                setTicketStatus("resolved");
-                setResolveOpen(false);
-                notify("Ticket marked as resolved");
-              }}
+              onClick={resolveTicket}
             >
               <CheckCircle2 size={16} /> Confirm resolution
             </button>
@@ -1811,7 +1868,7 @@ function CasesTab() {
         <Layers3 size={18} />
         <div>
           <b>Resolved case matches</b>
-          <p>Hybrid search · filtered to last 12 months.</p>
+          <p>Lexical relevance · filtered to last 12 months.</p>
         </div>
       </div>
       {cases.map((item) => (
@@ -2510,25 +2567,25 @@ function ModelsPage() {
     <>
       <Header
         title="Model health"
-        subtitle="Production model performance, evaluation gates, and drift signals."
+        subtitle="Offline candidate metrics and synthetic regression gates."
       />
       <div className="page models-page">
         <div className="model-hero">
           <div>
             <span className="model-live">
-              <span className="pulse" /> PRODUCTION
+              <span className="pulse" /> OFFLINE CANDIDATE
             </span>
             <h3>TF-IDF + Logistic Regression</h3>
-            <p>Default CPU-optimized hierarchical classifier</p>
+            <p>CPU-oriented classifier evaluated separately from the demo runtime</p>
             <div>
               <span>
                 Version <b>1.0.0</b>
               </span>
               <span>
-                Published <b>09 Jul 2026</b>
+                Dataset <b>v1.0.0</b>
               </span>
               <span>
-                Mean latency <b>0.22 ms</b>
+                Mean latency <b>0.21 ms</b>
               </span>
             </div>
           </div>
@@ -2547,31 +2604,31 @@ function ModelsPage() {
           />
           <MetricGate
             label="Critical ticket recall"
-            actual="0.96"
+            actual="1.00"
             target="≥ 0.90"
             pass
           />
           <MetricGate
             label="PII detection recall"
-            actual="0.98"
+            actual="1.00"
             target="≥ 0.95"
             pass
           />
           <MetricGate
             label="Retrieval Recall@5"
-            actual="0.89"
+            actual="1.00"
             target="≥ 0.85"
             pass
           />
           <MetricGate
             label="Retrieval MRR"
-            actual="0.81"
+            actual="1.00"
             target="≥ 0.75"
             pass
           />
           <MetricGate
             label="Unsupported claim rate"
-            actual="0.03"
+            actual="0.00"
             target="≤ 0.05"
             pass
           />
@@ -2581,7 +2638,7 @@ function ModelsPage() {
             <header>
               <div>
                 <h3>Language performance</h3>
-                <p>Evaluation dataset v1.3 · group split</p>
+                <p>Evaluation dataset v1.0 · 600 held-out records · group split</p>
               </div>
             </header>
             <div className="language-bars">
@@ -2611,16 +2668,16 @@ function ModelsPage() {
             </header>
             <ul className="safeguard-list">
               <li>
-                <CheckCircle2 size={16} /> Model artifact checksum verified
+                <CheckCircle2 size={16} /> Scenario-template groups kept across split boundaries
               </li>
               <li>
-                <CheckCircle2 size={16} /> Calibration drift within threshold
+                <CheckCircle2 size={16} /> Dataset and evaluation reports are versioned
               </li>
               <li>
-                <CheckCircle2 size={16} /> PII evaluation gate passed
+                <CheckCircle2 size={16} /> PII regression gate passed on labeled fixtures
               </li>
               <li>
-                <CheckCircle2 size={16} /> Rollback artifact available
+                <Info size={16} /> Demo API uses the deterministic taxonomy baseline
               </li>
             </ul>
           </article>
@@ -2681,10 +2738,14 @@ export default function App() {
     setRole(value);
     setPage(value === "lead" ? "dashboard" : "inbox");
   };
-  const createTicket = (title: string, text: string) => {
-    setTickets((current) => {
-      const nextId = Math.max(...current.map((ticket) => Number(ticket.id.split("-")[1]))) + 1;
-      const ticket: Ticket = {
+  const createTicket = async (title: string, text: string) => {
+    if (!isStaticShowcase) {
+      const ticket = await api.createTicket({ title, message: text, region: "İstanbul Anadolu", language: "tr" });
+      setTickets((current) => [ticket, ...current]);
+      return;
+    }
+    const nextId = Math.max(...tickets.map((ticket) => Number(ticket.id.split("-")[1]))) + 1;
+    const ticket: Ticket = {
         id: `TK-${nextId}`,
         customer_id: `CUST-${nextId}`,
         title,
@@ -2693,7 +2754,7 @@ export default function App() {
         region: "İstanbul Anadolu",
         status: "new",
         assigned_to: null,
-        created_at: "Just now",
+        created_at: new Date().toISOString(),
         category: "other",
         subcategory: "unclassified",
         priority: "medium",
@@ -2706,8 +2767,11 @@ export default function App() {
         ai_reviewed: false,
         resolution: null,
       };
-      return [ticket, ...current];
-    });
+    setTickets((current) => [ticket, ...current]);
+  };
+  const updateTicket = (updated: Ticket) => {
+    setTickets((current) => current.map((ticket) => ticket.id === updated.id ? updated : ticket));
+    setSelected(updated);
   };
   const uploadDocument = (title: string) => {
     setDocuments((current) => [
@@ -2729,20 +2793,21 @@ export default function App() {
       ...current,
     ]);
   };
-  const content = useMemo(() => {
+  const content = (() => {
     if (selected)
       return (
         <TicketDetail
           ticket={selected}
           documents={documents}
           onBack={() => setSelected(null)}
+          onUpdate={updateTicket}
         />
       );
     if (page === "dashboard") return <DashboardPage data={dashboard} />;
     if (page === "knowledge") return <KnowledgePage documents={documents} onUpload={uploadDocument} />;
     if (page === "models") return <ModelsPage />;
     return <InboxPage tickets={tickets} onSelect={setSelected} onCreate={createTicket} />;
-  }, [page, selected, tickets, documents, dashboard]);
+  })();
   if (!role) return <Landing onContinue={roleStart} />;
   return (
     <Shell

@@ -2,7 +2,7 @@
 
 :root { font-family: "DM Sans", sans-serif; color: #17231f; background: #f5f8f7; font-synthesis: none; --ink: #14211d; --muted: #6c7975; --line: #dfe6e3; --green: #168b64; --mint: #28b981; --navy: #071713; }
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 1180px; min-height: 100vh; }
+body { margin: 0; min-width: 0; min-height: 100vh; }
 button, input, textarea { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: default; opacity: .55; }
@@ -131,4 +131,82 @@ h1, h2, h3, h4, p { margin: 0; }
 
 @media (max-width: 1280px) {
   .sidebar { width: 215px; }.main-column { margin-left: 215px; }.page { padding-left: 18px; padding-right: 18px; }.table-head, .ticket-row { grid-template-columns: 28px minmax(230px,1.5fr) 115px 72px 80px 93px 75px 15px; }.hero-grid { gap: 40px; }.hero-copy h1 { font-size: 49px; }
+}
+
+@media (max-width: 760px) {
+  .landing { overflow: hidden; }
+  .landing-nav { height: 68px; padding: 0 18px; }
+  .landing-nav .logo-mark { width: 31px; height: 31px; }
+  .landing-nav .logo-wrap strong { font-size: 16px; }
+  .landing-nav .logo-wrap small { font-size: 6px; }
+  .system-pill { padding: 7px 9px; font-size: 0; }
+  .system-pill::after { content: "Online"; font-size: 10px; }
+  .hero-grid { min-height: 0; padding: 54px 20px 45px; display: block; }
+  .eyebrow { font-size: 8px; letter-spacing: 1px; padding: 7px 9px; }
+  .hero-copy h1 { margin: 22px 0 18px; font-size: clamp(35px, 11vw, 45px); letter-spacing: -2px; }
+  .hero-copy > p { font-size: 14px; line-height: 1.65; }
+  .role-actions { margin: 28px 0 24px; }
+  .role-button { min-height: 65px; padding: 13px 14px; }
+  .role-button b { font-size: 13px; }
+  .role-button small { font-size: 10px; }
+  .trust-row { gap: 13px; flex-wrap: wrap; font-size: 9px; }
+  .hero-visual { display: none; }
+  .landing-footer { min-height: 0; padding: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .landing-footer p { grid-column: 1 / -1; margin: 5px 0 0; line-height: 1.5; }
+
+  .shell { display: block; }
+  .sidebar { inset: auto 0 0; width: 100%; height: 62px; padding: 0; display: block; }
+  .side-logo, .workspace, .side-section, .side-spacer, .privacy-box, .profile { display: none; }
+  .sidebar nav { height: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
+  .sidebar nav button { height: 100%; padding: 6px 2px; border-radius: 0; flex-direction: column; justify-content: center; gap: 3px; font-size: 8px; text-align: center; }
+  .sidebar nav button span { flex: 0; }
+  .sidebar nav button i { position: absolute; margin: -28px 0 0 28px; padding: 1px 5px; font-size: 7px; }
+  .main-column { margin-left: 0; padding-bottom: 62px; }
+  .topbar { height: 64px; padding: 0 14px; }
+  .topbar h2 { font-size: 15px; }
+  .topbar p { max-width: 205px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .global-search { display: none; }
+  .top-actions { gap: 5px; }
+  .page { padding: 14px 12px 22px; }
+
+  .stats-row, .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .stat-card { min-height: 82px; padding: 12px; gap: 8px; }
+  .stat-icon { width: 29px; height: 29px; }
+  .stat-card b { font-size: 18px; }
+  .inbox-layout { display: block; overflow: hidden; }
+  .filters { display: none; }
+  .ticket-tools { flex-wrap: wrap; padding: 10px; }
+  .search-input { flex-basis: 100%; max-width: none; }
+  .ticket-tools .outline-button, .ticket-tools .primary-button { flex: 1; justify-content: center; margin-left: 0; }
+  .list-meta { height: auto; min-height: 38px; gap: 8px; }
+  .table-head { display: none; }
+  .ticket-row { min-height: 84px; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; padding: 11px 10px; }
+  .ticket-main { min-width: 0; }
+  .ticket-main p { max-width: 100%; }
+  .ticket-row .category-cell, .ticket-row .confidence, .ticket-row .assignee, .ticket-row .ticket-status, .ticket-row .row-arrow { display: none; }
+  .ticket-row .priority { grid-column: 3; grid-row: 1; align-self: start; }
+  .pagination { padding: 0 10px; }
+
+  .detail-page { height: auto; min-height: 100vh; }
+  .detail-top { height: auto; min-height: 74px; padding: 11px 12px; flex-wrap: wrap; }
+  .detail-top > div:nth-child(2) { min-width: 240px; }
+  .detail-actions { width: 100%; }
+  .detail-actions .outline-button, .detail-actions .resolve-button { flex: 1; justify-content: center; padding: 0 8px; }
+  .detail-columns { display: block; overflow: visible; }
+  .conversation-column, .analysis-column, .evidence-column { overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); }
+  .column-heading, .tabs { position: static; }
+  .entity-grid { grid-template-columns: repeat(2, 1fr); }
+  .toast { right: 12px; bottom: 74px; left: 12px; justify-content: center; }
+
+  .dashboard-grid, .kb-bottom-grid, .gate-grid, .model-grid { grid-template-columns: 1fr; }
+  .category-list { grid-template-columns: 1fr; }
+  .incident-detail-panel { grid-template-columns: 1fr 1fr; }
+  .incident-detail-panel .primary-button { grid-column: 1 / -1; justify-content: center; }
+  .region-row { grid-template-columns: 105px 1fr 50px; }
+  .kb-banner, .kb-toolbar, .model-hero { align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+  .kb-toolbar .search-input { flex-basis: 100%; }
+  .kb-toolbar .outline-button, .kb-toolbar .primary-button { flex: 1; justify-content: center; margin-left: 0; }
+  .document-table { overflow-x: auto; }
+  .doc-head, .doc-row { min-width: 820px; }
+  .model-hero { padding: 18px; }
 }

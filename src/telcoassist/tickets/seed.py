@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from telcoassist.common.schemas import Message, Ticket
 
 
@@ -14,11 +16,14 @@ def seed_tickets() -> list[Ticket]:
     ]
     tickets = []
     for id_, title, message, region, category, subcategory, priority, confidence, created, assigned in rows:
+        amount, unit, _ = created.split()
+        delta = timedelta(minutes=int(amount)) if unit == "min" else timedelta(hours=int(amount))
+        created_at = (datetime.now(timezone.utc) - delta).isoformat()
         tickets.append(Ticket(
             id=id_, customer_id=f"CUST-{id_[-4:]}", title=title, region=region, category=category,
-            subcategory=subcategory, priority=priority, confidence=confidence, created_at=created,
+            subcategory=subcategory, priority=priority, confidence=confidence, created_at=created_at,
             assigned_to=assigned, redacted_text=message, summary=message.split(".")[0] + ".",
-            messages=[Message(author="customer", body=message, created_at=created)], ai_reviewed=confidence >= .6,
+            messages=[Message(author="customer", body=message, created_at=created_at)], ai_reviewed=False,
         ))
     return tickets
 

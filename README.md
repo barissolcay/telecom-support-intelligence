@@ -1,6 +1,6 @@
 # TelcoAssist
 
-An end-to-end AI copilot and support intelligence platform for telecom customer service teams.
+A working portfolio prototype of an AI-assisted support intelligence platform for telecom customer service teams.
 
 [![CI](https://github.com/barissolcay/telecom-support-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/barissolcay/telecom-support-intelligence/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/barissolcay/telecom-support-intelligence/actions/workflows/codeql.yml/badge.svg)](https://github.com/barissolcay/telecom-support-intelligence/actions/workflows/codeql.yml)
@@ -8,7 +8,7 @@ An end-to-end AI copilot and support intelligence platform for telecom customer 
 [![Release](https://img.shields.io/github/v/release/barissolcay/telecom-support-intelligence)](https://github.com/barissolcay/telecom-support-intelligence/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-4f73bb)](LICENSE)
 
-TelcoAssist helps human support agents understand, prioritize, and resolve telecom tickets with grounded evidence. It combines hierarchical ticket classification, rule-aware priority prediction, privacy processing, hybrid case retrieval, citation-aware knowledge retrieval, feedback, and operational analytics in one review-first workflow.
+TelcoAssist helps human support agents understand, prioritize, and resolve telecom tickets with grounded evidence. It combines deterministic ticket intelligence, rule-aware priority prediction, privacy processing, case retrieval, citation-aware knowledge retrieval, feedback, and operational analytics in one review-first workflow.
 
 > All tickets, customers, documents, and evaluation results in this repository are synthetic. The application does not perform customer actions or send messages automatically.
 
@@ -24,16 +24,17 @@ Open the [interactive TelcoAssist demo](https://barissolcay.github.io/telecom-su
 
 ## Features
 
-- Hierarchical Turkish and English ticket classification with a TF-IDF + Logistic Regression baseline
+- Deterministic Turkish and English runtime classification plus an offline TF-IDF + Logistic Regression candidate
 - Rule engine plus model signals for priority prediction
 - Deterministic PII redaction before downstream processing
 - Structured summaries, entities, follow-up questions, and decision signals
-- Hybrid dense/lexical retrieval contract with Qdrant-ready metadata filters
+- Deterministic lexical demo retrieval plus a tested Qdrant hybrid-query adapter contract
 - Citation-aware RAG with active-document filtering and insufficient-evidence refusal
 - Agent inbox, three-column ticket workspace, response drafting, and resolution capture
 - Knowledge lifecycle management and indexing visibility
 - Operations dashboard with statistical incident signals and AI adoption metrics
-- Synthetic data pipeline, group-aware evaluation, DVC, MLflow configuration, Docker Compose, and CI
+- PostgreSQL-backed ticket, message, resolution, and feedback persistence in Docker
+- Synthetic data pipeline, group-aware evaluation, DVC stages, Docker Compose, and CI
 
 ## Architecture
 
@@ -42,28 +43,44 @@ flowchart LR
     UI["React agent workspace"] --> API["FastAPI modular monolith"]
     API --> Privacy["PII redaction"]
     Privacy --> Intelligence["Classification + priority + entities"]
-    Intelligence --> Cases["Hybrid case retrieval"]
+    Intelligence --> Cases["Case retrieval"]
     Intelligence --> Knowledge["Evidence-gated RAG"]
-    API --> PG[(PostgreSQL)]
-    Cases --> Q[(Qdrant)]
-    Knowledge --> Q
-    Training["DVC training pipeline"] --> Registry["MLflow model registry"]
+    API --> Store["Storage interface"]
+    Store --> PG[(PostgreSQL in Docker)]
+    Store --> Memory["In-memory local fallback"]
+    Cases --> Lexical["Deterministic lexical ranker"]
+    Q["Optional Qdrant adapter contract"] -. future integration .-> Cases
+    Training["DVC training pipeline"] --> Artifact["Versioned offline model artifact"]
     Feedback["Human feedback"] --> PG
     PG --> Analytics["Operations intelligence"]
 ```
 
-The V1 is a modular monolith: domain boundaries remain explicit without adding network failure modes between small services. PostgreSQL and Qdrant adapters are represented in deployment; the application can also boot in synthetic demo mode so that the interface remains reviewable when infrastructure is unavailable.
+The V1 is a modular monolith: domain boundaries remain explicit without adding network failure modes between small services. Docker Compose uses PostgreSQL for the working ticket lifecycle. Local development defaults to an in-memory repository, and the GitHub Pages showcase uses in-browser synthetic state. Qdrant is an optional adapter contract rather than an active dependency of the demo path.
+
+### Runtime scope
+
+| Capability | API-backed Docker demo | GitHub Pages showcase |
+| --- | --- | --- |
+| Ticket, message, resolution, feedback storage | PostgreSQL | Browser session only |
+| Classification | Deterministic taxonomy baseline | Versioned fixture outputs |
+| Case and knowledge retrieval | Deterministic lexical ranker | Versioned fixture outputs |
+| TF-IDF + Logistic Regression | Offline evaluated candidate | Metrics view only |
+| Qdrant | Adapter contract; not active by default | Not used |
 
 ## Quick start
 
 ### Docker
 
 ```bash
-cp .env.example .env
 docker compose up --build
 ```
 
-Open the web application at `http://localhost:8080`, API documentation at `http://localhost:8000/docs`, Qdrant at `http://localhost:6333/dashboard`, and MLflow at `http://localhost:5000`.
+Compose works without a local `.env` file and applies its PostgreSQL settings explicitly. Copy
+`.env.example` only when you want to customize the remaining application settings.
+
+Open the web application at `http://localhost:8080` and API documentation at `http://localhost:8000/docs`.
+
+The optional Qdrant adapter sandbox can be started separately with `docker compose --profile adapter up qdrant`; it is not wired into the default demo request path.
 
 ### Local development
 
@@ -74,6 +91,8 @@ pip install -e ".[dev]"
 npm --prefix apps/web install
 make dev
 ```
+
+For training-only environments, install the smaller `.[ml]` extra instead of the full development toolchain.
 
 Run checks with:
 
@@ -87,6 +106,8 @@ make evaluate
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
 | `POST` | `/api/v1/tickets` | Create and privacy-process a ticket |
+| `PATCH` | `/api/v1/tickets/{id}` | Update assignment or workflow status |
+| `POST` | `/api/v1/tickets/{id}/messages` | Save a redacted agent/system message |
 | `POST` | `/api/v1/tickets/{id}/analyze` | Run structured ticket intelligence |
 | `GET` | `/api/v1/tickets/{id}/similar-cases` | Retrieve resolved cases with filters |
 | `POST` | `/api/v1/copilot/query` | Return evidence-gated guidance |
@@ -99,17 +120,17 @@ make evaluate
 
 Results are generated from the versioned synthetic evaluation set by `make evaluate`; the report files under `reports/` are the source of truth. Metrics must not be interpreted as performance on real operator data.
 
-| Component | Metric | Measured | Gate |
-| --- | --- | ---: | ---: |
-| Ticket classification | Macro F1 | 1.00 | ≥ 0.85 |
-| Priority prediction | Macro F1 | 1.00 | ≥ 0.75 |
-| PII masking | Recall | 1.00 | ≥ 0.95 |
-| Similar-case retrieval | Recall@5 | 1.00 | ≥ 0.85 |
-| Similar-case retrieval | MRR | 1.00 | ≥ 0.75 |
-| RAG | Citation correctness | 1.00 | ≥ 0.90 |
-| RAG | Unsupported claim rate | 0.00 | ≤ 0.05 |
+| Component | Metric | Measured | Gate | Evaluation scope |
+| --- | --- | ---: | ---: | --- |
+| Offline ticket classifier | Macro F1 | 1.00 | ≥ 0.85 | 600 held-out synthetic records |
+| Priority rules | Macro F1 | 1.00 | ≥ 0.75 | 7 safety/regression fixtures |
+| PII masking | Recall | 1.00 | ≥ 0.95 | 6 labeled positive fixtures |
+| Similar-case retrieval | Recall@5 | 1.00 | ≥ 0.85 | 4 synthetic queries |
+| Similar-case retrieval | MRR | 1.00 | ≥ 0.75 | 4 synthetic queries |
+| Grounded response | Citation correctness | 1.00 | ≥ 0.90 | 3 answer + 1 refusal fixtures |
+| Grounded response | Unsupported claim rate | 0.00 | ≤ 0.05 | 3 answer fixtures |
 
-These values come from the repository's controlled synthetic fixtures and intentionally separable template groups. They validate the pipeline and regression gates, not generalization to real customer language.
+These values come from small, controlled synthetic fixtures and intentionally separable template groups. They validate pipeline regressions, not generalization to real customer language. Perfect fixture scores are reported with their sample sizes to avoid implying production model quality.
 
 ## Screenshots
 
@@ -133,8 +154,8 @@ See [privacy](docs/privacy.md), [security policy](SECURITY.md), and [architectur
 ## Limitations
 
 - The repository uses synthetic telecom scenarios and synthetic operating baselines.
-- Demo retrieval uses a deterministic local implementation; production deployment should enable the Qdrant adapter and evaluate embeddings on operator-approved data.
-- The default classifier is CPU-oriented. An XLM-R comparison is documented but not required to run the product.
+- Demo retrieval uses a deterministic local implementation; the Qdrant adapter is a tested integration boundary, not a completed production path.
+- The API runtime uses a deterministic taxonomy baseline. The TF-IDF classifier is an offline candidate and is not loaded by the demo API.
 - No speech transcription, operator provisioning integration, packet inspection, or automatic customer messaging is included.
 - Incident signals use rolling statistical thresholds, not causal network diagnosis.
 - Every recommendation requires agent review.
@@ -148,6 +169,7 @@ See [privacy](docs/privacy.md), [security policy](SECURITY.md), and [architectur
 - [Evaluation](docs/evaluation.md)
 - [Privacy](docs/privacy.md)
 - [Limitations](docs/limitations.md)
+- [Five-minute reviewer guide](docs/reviewer-guide.md)
 
 ## License
 

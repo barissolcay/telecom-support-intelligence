@@ -13,12 +13,13 @@ api:
 web:
 	npm --prefix apps/web run dev
 
-test:
+test: lint
 	pytest --cov=telcoassist --cov-report=term-missing --cov-fail-under=80
 	npm --prefix apps/web run build
 
 lint:
 	ruff check src tests scripts
+	npm --prefix apps/web run lint
 
 build:
 	npm --prefix apps/web run build

@@ -1,6 +1,6 @@
 from telcoassist.knowledge.catalog import DOCUMENTS
 from telcoassist.rag.service import answer
-from telcoassist.retrieval.service import hybrid_search, lexical_score, tokens
+from telcoassist.retrieval.service import lexical_score, rank_items, tokens
 from telcoassist.tickets.seed import SIMILAR_CASES
 
 
@@ -9,8 +9,8 @@ def test_tokenization_and_score():
     assert lexical_score("error 651", "Modem Error 651 guide") > 0
 
 
-def test_hybrid_search_filters_product_and_ranks_case():
-    results = hybrid_search("Akşam internet hızım yavaşlıyor", SIMILAR_CASES, product="fixed_internet")
+def test_rank_items_filters_product_and_ranks_case():
+    results = rank_items("Akşam internet hızım yavaşlıyor", SIMILAR_CASES, product="fixed_internet")
     assert results[0]["id"] == "CASE-2031"
     assert all(row["product"] == "fixed_internet" for row in results)
 

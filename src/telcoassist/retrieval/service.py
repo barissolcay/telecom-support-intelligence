@@ -15,7 +15,7 @@ def lexical_score(query: str, candidate: str) -> float:
     return shared / max(1, math.sqrt(sum(q.values()) * sum(c.values())))
 
 
-def hybrid_search(query: str, items: list[dict[str, Any]], *, product: str | None = None, limit: int = 5) -> list[dict[str, Any]]:
+def rank_items(query: str, items: list[dict[str, Any]], *, product: str | None = None, limit: int = 5) -> list[dict[str, Any]]:
     scored = []
     synonyms = {"yavaş": "hız speed degradation", "kopuyor": "kesinti intermittent", "çekmiyor": "signal coverage"}
     expanded = query + " " + " ".join(value for key, value in synonyms.items() if key in query.lower())

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from sqlalchemy import create_engine
 
 from telcoassist.database.models import Base
@@ -28,3 +30,14 @@ def test_qdrant_query_uses_rrf_and_metadata_filters():
     assert {entry["using"] for entry in payload["prefetch"]} == {"dense", "sparse"}
     filters = payload["prefetch"][0]["filter"]["must"]
     assert {item["key"] for item in filters} == {"product", "region", "outcome"}
+
+
+def test_example_environment_is_safe_for_host_development():
+    values = dict(
+        line.split("=", 1)
+        for line in Path(".env.example").read_text(encoding="utf-8").splitlines()
+        if line and not line.startswith("#")
+    )
+    assert values["STORAGE_BACKEND"] == "memory"
+    assert values["DATABASE_URL"].startswith("sqlite:///")
+    assert values["QDRANT_URL"] == "http://localhost:6333"
