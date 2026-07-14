@@ -2,4 +2,4 @@
 
 Status: accepted
 
-The V1 uses one FastAPI deployment with explicit domain modules. This preserves transactional feedback and simple local operation while keeping future extraction boundaries visible. Web, API, worker, storage, vector search, and experiment tracking remain independently deployable processes where their operational characteristics differ.
+The V1 uses one FastAPI deployment with explicit domain modules. This preserves transactional ticket, message, resolution, and feedback writes while keeping future extraction boundaries visible. The web client is deployed separately. PostgreSQL is used by the Docker path; optional vector-search adapters stay outside the default request path until they have an evaluated end-to-end integration.

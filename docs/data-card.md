@@ -6,7 +6,7 @@ The dataset supports development and regression testing of telecom ticket classi
 
 ## Generation
 
-`scripts/generate_dataset.py` combines controlled Turkish and English scenario templates with harmless variations. Each record includes a scenario group, language, channel, taxonomy labels, priority, structured entities, and `synthetic: true`. Generation is seeded, schema-validated, scanned for common PII, and deduplicated.
+`scripts/generate_dataset.py` combines controlled Turkish and English scenario templates with harmless variations. Each record includes a scenario group, language, channel, taxonomy labels, priority, structured entities, and `synthetic: true`. Generation is seeded and validates required fields, unique IDs, unique text, balanced language counts, and the synthetic marker.
 
 ## Splitting
 

@@ -38,10 +38,21 @@ class Ticket(BaseModel):
 
 
 class TicketCreate(BaseModel):
+    title: str | None = Field(default=None, min_length=3, max_length=120)
     channel: Literal["chat", "email", "call", "mobile_app"] = "chat"
     language: Literal["tr", "en"] = "tr"
     message: str = Field(min_length=5, max_length=10_000)
     region: str = "Unknown"
+
+
+class TicketUpdate(BaseModel):
+    assigned_to: str | None = Field(default=None, max_length=64)
+    status: Literal["new", "in_progress", "waiting", "resolved"] | None = None
+
+
+class MessageCreate(BaseModel):
+    author: Literal["agent", "system"] = "agent"
+    body: str = Field(min_length=1, max_length=10_000)
 
 
 class Classification(BaseModel):
@@ -49,14 +60,14 @@ class Classification(BaseModel):
     subcategory: str
     confidence: float
     requires_review: bool
-    model_version: str = "tfidf-logreg-baseline-v1"
+    model_version: str = "deterministic-taxonomy-v1"
 
 
 class PriorityPrediction(BaseModel):
     priority: Literal["low", "medium", "high", "critical"]
     confidence: float
     signals: list[str]
-    model_version: str = "priority-rules-linear-v1"
+    model_version: str = "priority-rules-v1"
 
 
 class AnalysisResponse(BaseModel):

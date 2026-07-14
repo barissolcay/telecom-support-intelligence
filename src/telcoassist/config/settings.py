@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -7,9 +8,9 @@ class Settings(BaseSettings):
     app_name: str = "TelcoAssist API"
     app_env: str = "development"
     log_level: str = "INFO"
+    storage_backend: Literal["memory", "database"] = "memory"
     database_url: str = "sqlite:///./telcoassist.db"
     qdrant_url: str = "http://localhost:6333"
-    mlflow_tracking_uri: str = "http://localhost:5000"
     llm_provider: str = "disabled"
     llm_api_key: str = ""
     retrieval_min_score: float = 0.18

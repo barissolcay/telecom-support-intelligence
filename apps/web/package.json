@@ -15,7 +15,7 @@
     "lucide-react": "^0.468.0",
     "react": "latest",
     "react-dom": "latest",
-    "recharts": "^2.15.0",
+    "recharts": "^3.9.2",
     "vite": "latest"
   },
   "devDependencies": {

@@ -1,12 +1,12 @@
 from typing import Any
 
 from telcoassist.knowledge.catalog import DOCUMENTS
-from telcoassist.retrieval.service import hybrid_search
+from telcoassist.retrieval.service import rank_items
 
 
 def answer(question: str, category: str, min_score: float = 0.28) -> dict[str, Any]:
     sources = [doc for doc in DOCUMENTS if doc["status"] == "active"]
-    ranked = hybrid_search(question, sources, product=category, limit=3)
+    ranked = rank_items(question, sources, product=category, limit=3)
     evidence = [source for source in ranked if source["similarity"] >= min_score]
     if not evidence:
         return {
