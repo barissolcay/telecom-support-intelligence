@@ -1,18 +1,29 @@
 import re
 from typing import Any
 
+_DURATION_PATTERN = re.compile(
+    r"\b(?:son[ \t]{1,8})?([0-9]{1,4})(?![0-9])[ \t]{0,8}"
+    r"(gün|day|saat|hour|hafta|week)",
+    re.I,
+)
+_DEVICE_MODEL_PATTERN = re.compile(r"\b(?:huawei|zte|tp-?link|zyxel|nokia)\s+[a-z0-9-]{3,}\b", re.I)
+_ERROR_CODE_PATTERN = re.compile(
+    r"\b(?:error|hata|sip)[ \t]{0,8}[-:]?[ \t]{0,8}([0-9]{3,5})\b",
+    re.I,
+)
+
 
 def extract_entities(text: str, category: str) -> dict[str, Any]:
     value = text.lower()
     entities: dict[str, Any] = {"service_type": category}
 
-    duration = re.search(r"(?:son\s+)?(\d+)\s*(gün|day|saat|hour|hafta|week)", value)
+    duration = _DURATION_PATTERN.search(value)
     if duration:
         entities["duration"] = f"{duration.group(1)} {duration.group(2)}"
-    model = re.search(r"\b(?:huawei|zte|tp-?link|zyxel|nokia)\s+[a-z0-9-]{3,}\b", text, re.I)
+    model = _DEVICE_MODEL_PATTERN.search(text)
     if model:
         entities["device_model"] = model.group(0)
-    error = re.search(r"\b(?:error|hata|sip)\s*[-:]?\s*([0-9]{3,5})\b", text, re.I)
+    error = _ERROR_CODE_PATTERN.search(text)
     if error:
         entities["error_code"] = error.group(1)
     if any(x in value for x in ("akşam", "evening", "20.00", "peak hour")):

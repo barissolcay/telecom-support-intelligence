@@ -35,8 +35,18 @@ def test_priority_safety_rules(text, expected):
 def test_entities_and_follow_up():
     text = "Huawei HG658 modem kullanıyorum. Son 2 gündür DSL ışığı yanıp sönüyor, yeniden başlattım."
     entities = extract_entities(text, "fixed_internet")
+    assert entities["duration"] == "2 gün"
     assert entities["device_model"] == "Huawei HG658"
     assert entities["indicator_state"] == "blinking"
     assert entities["customer_action"] == "modem_restarted"
     assert follow_up_question(entities, "fixed_internet", "tr") is not None
+
+
+def test_entity_patterns_reject_unbounded_numeric_runs():
+    text = f"Son {'9' * 10_000} gündür hata {'0' * 10_000}"
+
+    entities = extract_entities(text, "fixed_internet")
+
+    assert "duration" not in entities
+    assert "error_code" not in entities
     assert follow_up_question({"connection_type": "wifi"}, "fixed_internet", "tr") is None
